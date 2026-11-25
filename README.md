@@ -72,6 +72,15 @@ scripts\run-gui.bat
 pathprobe gui
 ```
 
+### Готовый exe
+
+```powershell
+.\scripts\build-windows-exe.ps1
+```
+
+Артефакты: `dist\gui\pathprobe-gui.exe`, `dist\pathprobe-<ver>-windows-amd64.zip` (+ `.sha256` хеш exe).  
+Рядом с exe должен лежать `config.yaml` (в архив кладётся пример).
+
 В окне:
 
 1. Укажите `config.yaml` (кнопка «Обзор…»).
@@ -109,4 +118,4 @@ pytest -q
 
 ## Версия
 
-`0.2.0` — фаза 1 + Windows GUI.
+`0.2.1` — фаза 1 + Windows GUI + сборка `pathprobe-gui.exe`.

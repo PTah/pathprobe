@@ -19,6 +19,22 @@ except ImportError:  # pragma: no cover
     ctk = None  # type: ignore[assignment]
 
 
+def app_dir() -> Path:
+    """Каталог рядом с exe (PyInstaller) или cwd при запуске из исходников."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path.cwd()
+
+
+def default_config_path() -> Path:
+    base = app_dir()
+    for name in ("config.yaml", "config.example.yaml"):
+        candidate = base / name
+        if candidate.is_file():
+            return candidate
+    return base / "config.yaml"
+
+
 STAGE_LABELS = {sid: title for sid, title in STAGES}
 
 AVAIL_COLORS = {
@@ -51,7 +67,7 @@ class PathprobeApp(ctk.CTk):
         top.pack(fill="x", padx=12, pady=(12, 6))
 
         ctk.CTkLabel(top, text="Конфиг:").pack(side="left", padx=(8, 4))
-        self.config_var = ctk.StringVar(value=str(Path("config.yaml").resolve()))
+        self.config_var = ctk.StringVar(value=str(default_config_path()))
         self.config_entry = ctk.CTkEntry(top, textvariable=self.config_var, width=520)
         self.config_entry.pack(side="left", padx=4, fill="x", expand=True)
         ctk.CTkButton(top, text="Обзор…", width=90, command=self._browse).pack(side="left", padx=4)
