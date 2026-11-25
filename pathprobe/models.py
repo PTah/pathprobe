@@ -43,6 +43,9 @@ class CauseCode(str, Enum):
     MTU_OK = "mtu_ok"
     MTU_BLACKHOLE = "mtu_blackhole"
     MTU_LIMITED = "mtu_limited"
+    HTTP_OK = "http_ok"
+    HTTP_DENY = "http_deny"
+    HTTP_BLOCK_PAGE = "http_block_page"
     ERROR = "error"
 
 
@@ -69,6 +72,9 @@ CAUSE_RU: dict[CauseCode, str] = {
     CauseCode.MTU_OK: "MTU: путь пропускает заявленный размер",
     CauseCode.MTU_BLACKHOLE: "MTU: PMTUD blackhole (DF + drop больших кадров)",
     CauseCode.MTU_LIMITED: "MTU: путь ограничен (нужна фрагментация/clamp MSS)",
+    CauseCode.HTTP_OK: "HTTP: ответ 2xx/3xx (сервис отвечает)",
+    CauseCode.HTTP_DENY: "HTTP: отказ сервиса/WAF (403/401/451 и т.п.)",
+    CauseCode.HTTP_BLOCK_PAGE: "HTTP: похоже на страницу блокировки провайдера/фильтра",
     CauseCode.ERROR: "внутренняя ошибка пробы",
 }
 
@@ -131,7 +137,7 @@ class MatrixCell:
 
 @dataclass
 class Classification:
-    """Итоговая классификация пути для peer."""
+    """Итоговая классификация для peer или destination."""
 
     peer: str
     primary_causes: list[str]
@@ -140,6 +146,9 @@ class Classification:
     summary_ru: str
     suggested_profiles: list[dict[str, str]]
     confidence: str = "medium"
+    kind: str = "peer"  # peer | destination
+    verdict: str = ""
+    who_blocks_ru: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -152,11 +161,13 @@ class DiagnosisReport:
     results: list[ProbeResult]
     matrix: list[MatrixCell]
     classifications: list[Classification]
+    mode: str = "peers"  # peers | destinations | mixed
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "generated_at": self.generated_at,
             "config_path": self.config_path,
+            "mode": self.mode,
             "results": [r.to_dict() for r in self.results],
             "matrix": [c.to_dict() for c in self.matrix],
             "classifications": [c.to_dict() for c in self.classifications],

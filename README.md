@@ -1,19 +1,17 @@
 # Pathprobe
 
-Диагностика и классификация блокировок на пути между **домашним Ubuntu-роутером** и **рабочим MikroTik (RouterOS 6.49.19)**.
+Диагностика **почему не открывается сервис** (Canva и др.): DNS подмена/NXDOMAIN, TCP RST/timeout, DPI по SNI, HTTP-заглушка vs отказ самого сервиса.
 
-Два режима:
+Два способа запуска:
 
 | Режим | Где | Как |
 |-------|-----|-----|
 | **CLI** | Linux (и Windows) | `pathprobe diagnose` |
 | **GUI** | Windows | `pathprobe-gui` / `scripts\run-gui.bat` |
 
-Фаза 1: только пробы и отчёт. Генерация/применение туннелей — позже, см. [`docs/architecture-phase2.md`](docs/architecture-phase2.md).
+В конфиге главный блок — `destinations` (+ `local_dns` / `control_dns`). Опционально `peers` — свой роутер/VPS.
 
-Таксономия слоёв согласована с CircumVolve / ccs26-circumvolve (DNS, TCP, TLS-SNI, UDP, MTU) — без OpenEvolve.
-
-Ограничение: цели — **только своя** инфраструктура (`config.yaml` → `peers`).
+Таксономия слоёв согласована с CircumVolve (DNS, TCP, TLS-SNI, HTTP).
 
 ---
 
@@ -118,4 +116,4 @@ pytest -q
 
 ## Версия
 
-`0.2.1` — фаза 1 + Windows GUI + сборка `pathprobe-gui.exe`.
+`0.3.0` — режим `destinations` (кто блокирует сайт: DNS/путь/DPI/сервис).

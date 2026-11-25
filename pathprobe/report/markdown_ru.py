@@ -8,10 +8,11 @@ from pathprobe.models import DiagnosisReport
 
 def render_markdown_ru(report: DiagnosisReport) -> str:
     lines: list[str] = []
-    lines.append("# Отчёт pathprobe: диагностика пути")
+    lines.append("# Отчёт pathprobe: диагностика блокировок")
     lines.append("")
     lines.append(f"- Сформирован: `{report.generated_at}` (UTC)")
     lines.append(f"- Конфиг: `{report.config_path or '—'}`")
+    lines.append(f"- Режим: `{report.mode}`")
     lines.append("")
 
     counts = matrix_summary_counts(report.matrix)
@@ -25,7 +26,7 @@ def render_markdown_ru(report: DiagnosisReport) -> str:
 
     lines.append("## Матрица протокол/порт")
     lines.append("")
-    lines.append("| Peer | Протокол | Порт | Статус | Причина |")
+    lines.append("| Цель | Протокол | Порт | Статус | Причина |")
     lines.append("|------|----------|------|--------|---------|")
     for c in report.matrix:
         port = c.port if c.port is not None else "—"
@@ -41,8 +42,13 @@ def render_markdown_ru(report: DiagnosisReport) -> str:
     lines.append("## Классификация")
     lines.append("")
     for cl in report.classifications:
-        lines.append(f"### Peer: `{cl.peer}`")
+        title = "Destination" if cl.kind == "destination" else "Peer"
+        lines.append(f"### {title}: `{cl.peer}`")
         lines.append("")
+        if cl.kind == "destination":
+            lines.append(f"- **Вердикт:** `{cl.verdict}`")
+            lines.append(f"- **Кто режет:** {cl.who_blocks_ru}")
+            lines.append("")
         lines.append(cl.summary_ru)
         lines.append("")
         lines.append(f"- Уверенность: **{cl.confidence}**")
@@ -52,7 +58,7 @@ def render_markdown_ru(report: DiagnosisReport) -> str:
             f"- Аналоги CircumVolve: {', '.join(cl.circumvolve_analogues) or '—'}"
         )
         lines.append("")
-        lines.append("Рекомендуемые профили (фаза 2, без применения):")
+        lines.append("Рекомендации:")
         lines.append("")
         for p in cl.suggested_profiles:
             lines.append(f"- **{p['profile']}** — {p['reason_ru']}")
@@ -60,8 +66,8 @@ def render_markdown_ru(report: DiagnosisReport) -> str:
 
     lines.append("## Детали проб")
     lines.append("")
-    lines.append("| Слой | Peer | Цель | Причина |")
-    lines.append("|------|------|------|---------|")
+    lines.append("| Слой | Цель | Цель/адрес | Причина |")
+    lines.append("|------|------|------------|---------|")
     for r in report.results:
         lines.append(
             f"| {r.layer.value} | {r.peer} | {r.target} | {r.cause_ru()} |"
@@ -70,7 +76,7 @@ def render_markdown_ru(report: DiagnosisReport) -> str:
     lines.append("---")
     lines.append("")
     lines.append(
-        "_Фаза 1 pathprobe: только диагностика. Генерация и применение туннелей — в фазе 2._"
+        "_Режим destinations сравнивает локальный DNS с эталоном и проверяет TCP/TLS/HTTP до цели._"
     )
     lines.append("")
     return "\n".join(lines)

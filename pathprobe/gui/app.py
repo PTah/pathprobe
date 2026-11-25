@@ -8,7 +8,8 @@ from tkinter import filedialog, messagebox, ttk
 
 from pathprobe import __version__
 from pathprobe.config import load_config
-from pathprobe.diagnose.runner import STAGES, run_diagnosis
+from pathprobe.diagnose.destination import DEST_STAGES
+from pathprobe.diagnose.runner import STAGES, diagnosis_stages, run_diagnosis
 from pathprobe.models import Availability, DiagnosisReport
 from pathprobe.report.json_report import write_json
 from pathprobe.report.markdown_ru import write_markdown_ru
@@ -35,7 +36,7 @@ def default_config_path() -> Path:
     return base / "config.yaml"
 
 
-STAGE_LABELS = {sid: title for sid, title in STAGES}
+STAGE_LABELS = {sid: title for sid, title in STAGES + DEST_STAGES}
 
 AVAIL_COLORS = {
     Availability.AVAILABLE.value: "#1a7f37",
@@ -48,7 +49,7 @@ AVAIL_COLORS = {
 class PathprobeApp(ctk.CTk):
     def __init__(self) -> None:
         super().__init__()
-        self.title(f"Pathprobe {__version__} — диагностика пути")
+        self.title(f"Pathprobe {__version__} — диагностика блокировок")
         self.geometry("1100x720")
         self.minsize(900, 600)
 
@@ -59,6 +60,7 @@ class PathprobeApp(ctk.CTk):
         self._busy = False
         self._stage_vars: dict[str, ctk.StringVar] = {}
         self._stage_labels: dict[str, ctk.CTkLabel] = {}
+        self._stages_frame: ctk.CTkFrame | None = None
 
         self._build()
 
@@ -88,19 +90,12 @@ class PathprobeApp(ctk.CTk):
         ctk.CTkLabel(left, text="Этапы проверки", font=ctk.CTkFont(size=16, weight="bold")).pack(
             anchor="w", padx=12, pady=(12, 8)
         )
-        self.peer_status = ctk.CTkLabel(left, text="Peer: —", anchor="w")
+        self.peer_status = ctk.CTkLabel(left, text="Цель: —", anchor="w")
         self.peer_status.pack(fill="x", padx=12, pady=(0, 8))
 
-        for sid, title in STAGES:
-            row = ctk.CTkFrame(left, fg_color="transparent")
-            row.pack(fill="x", padx=10, pady=4)
-            var = ctk.StringVar(value="ожидание")
-            self._stage_vars[sid] = var
-            badge = ctk.CTkLabel(row, text="●", width=20, text_color="#888888")
-            badge.pack(side="left")
-            self._stage_labels[sid] = badge
-            ctk.CTkLabel(row, text=title, width=100, anchor="w").pack(side="left")
-            ctk.CTkLabel(row, textvariable=var, anchor="w").pack(side="left", fill="x", expand=True)
+        self._stages_frame = ctk.CTkFrame(left, fg_color="transparent")
+        self._stages_frame.pack(fill="x", padx=0, pady=0)
+        self._rebuild_stages(STAGES)
 
         self.log_box = ctk.CTkTextbox(left, height=180)
         self.log_box.pack(fill="both", expand=True, padx=10, pady=10)
@@ -157,6 +152,24 @@ class PathprobeApp(ctk.CTk):
         if path:
             self.config_var.set(path)
 
+    def _rebuild_stages(self, stages: tuple[tuple[str, str], ...]) -> None:
+        if self._stages_frame is None:
+            return
+        for child in self._stages_frame.winfo_children():
+            child.destroy()
+        self._stage_vars.clear()
+        self._stage_labels.clear()
+        for sid, title in stages:
+            row = ctk.CTkFrame(self._stages_frame, fg_color="transparent")
+            row.pack(fill="x", padx=10, pady=4)
+            var = ctk.StringVar(value="ожидание")
+            self._stage_vars[sid] = var
+            badge = ctk.CTkLabel(row, text="●", width=20, text_color="#888888")
+            badge.pack(side="left")
+            self._stage_labels[sid] = badge
+            ctk.CTkLabel(row, text=title, width=110, anchor="w").pack(side="left")
+            ctk.CTkLabel(row, textvariable=var, anchor="w").pack(side="left", fill="x", expand=True)
+
     def _log(self, msg: str) -> None:
         self.log_box.insert("end", msg + "\n")
         self.log_box.see("end")
@@ -188,11 +201,13 @@ class PathprobeApp(ctk.CTk):
         self.run_btn.configure(state="disabled")
         self.save_btn.configure(state="disabled")
         self._report = None
+        self._rebuild_stages(diagnosis_stages(cfg))
         self._reset_stages()
         for item in self.tree.get_children():
             self.tree.delete(item)
         self.reco_box.delete("1.0", "end")
-        self._log(f"Старт: {cfg_path}")
+        mode = "destinations" if cfg.get("destinations") else "peers"
+        self._log(f"Старт: {cfg_path} (режим {mode})")
         self.status_bar.configure(text="Диагностика выполняется…")
 
         def worker() -> None:
@@ -209,29 +224,29 @@ class PathprobeApp(ctk.CTk):
 
     def _on_progress(self, peer: str, stage: str, event: str, detail: str) -> None:
         if stage == "peer":
-            self.peer_status.configure(text=f"Peer: {peer} ({event})")
+            self.peer_status.configure(text=f"Цель: {peer} ({event})")
             self._log(f"[{peer}] {event} {detail}".strip())
             return
         if stage == "classify":
             self._log(f"Классификация: {detail}")
             return
+        label = STAGE_LABELS.get(stage, stage)
         if event == "start":
             self._set_stage(stage, "идёт…", "#0969da")
-            self._log(f"[{peer}] этап {STAGE_LABELS.get(stage, stage)} — старт")
+            self._log(f"[{peer}] этап {label} — старт")
         elif event == "done":
-            color = "#1a7f37"
-            self._set_stage(stage, detail or "готово", color)
-            self._log(f"[{peer}] этап {STAGE_LABELS.get(stage, stage)} — {detail or 'готово'}")
+            self._set_stage(stage, detail or "готово", "#1a7f37")
+            self._log(f"[{peer}] этап {label} — {detail or 'готово'}")
         elif event == "error":
             self._set_stage(stage, "ошибка", "#cf222e")
-            self._log(f"[{peer}] этап {STAGE_LABELS.get(stage, stage)} — ошибка: {detail}")
+            self._log(f"[{peer}] этап {label} — ошибка: {detail}")
 
     def _on_done(self, report: DiagnosisReport) -> None:
         self._report = report
         self._busy = False
         self.run_btn.configure(state="normal")
         self.save_btn.configure(state="normal")
-        self.status_bar.configure(text=f"Готово · {report.generated_at}")
+        self.status_bar.configure(text=f"Готово · {report.mode} · {report.generated_at}")
 
         for cell in report.matrix:
             port = "" if cell.port is None else str(cell.port)
@@ -253,6 +268,9 @@ class PathprobeApp(ctk.CTk):
         lines: list[str] = []
         for cl in report.classifications:
             lines.append(f"═══ {cl.peer} ═══")
+            if cl.kind == "destination":
+                lines.append(f"Вердикт: {cl.verdict}")
+                lines.append(f"Кто режет: {cl.who_blocks_ru}")
             lines.append(cl.summary_ru)
             lines.append(f"Уверенность: {cl.confidence}")
             layers = ", ".join(cl.layers_affected) or "нет"
@@ -260,7 +278,7 @@ class PathprobeApp(ctk.CTk):
             analogues = ", ".join(cl.circumvolve_analogues) or "—"
             lines.append(f"Аналоги CircumVolve: {analogues}")
             lines.append("")
-            lines.append("Рекомендации профилей (фаза 2 — без применения):")
+            lines.append("Рекомендации:")
             for p in cl.suggested_profiles:
                 lines.append(f"  • {p['profile']}")
                 lines.append(f"    {p['reason_ru']}")

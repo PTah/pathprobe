@@ -19,7 +19,7 @@ def _default_reports_dir() -> Path:
 @click.group()
 @click.version_option(__version__, prog_name="pathprobe")
 def main() -> None:
-    """Pathprobe — диагностика блокировок на своём пути (home Ubuntu ↔ work MikroTik)."""
+    """Pathprobe — диагностика блокировок destinations (и опционально peers)."""
 
 
 @main.command("diagnose")

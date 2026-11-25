@@ -5,6 +5,7 @@ from typing import Any, Callable
 
 from pathprobe.config import peer_items
 from pathprobe.diagnose.classify import classify_all
+from pathprobe.diagnose.destination import DEST_STAGES, probe_all_destinations
 from pathprobe.diagnose.dns import probe_peer_dns
 from pathprobe.diagnose.matrix import build_matrix
 from pathprobe.diagnose.mtu import probe_mtu
@@ -23,6 +24,13 @@ STAGES: tuple[tuple[str, str], ...] = (
     ("udp", "UDP"),
     ("mtu", "MTU"),
 )
+
+
+def diagnosis_stages(cfg: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Этапы для GUI: destinations или peers."""
+    if cfg.get("destinations"):
+        return DEST_STAGES
+    return STAGES
 
 
 def _emit(cb: ProgressCb | None, peer: str, stage: str, event: str, detail: str = "") -> None:
@@ -74,17 +82,40 @@ def run_diagnosis(
 ) -> DiagnosisReport:
     timeouts = cfg.get("timeouts") or {}
     results: list[ProbeResult] = []
-    for name, peer_cfg in peer_items(cfg):
-        _emit(on_progress, name, "peer", "start", "начало диагностики peer")
-        results.extend(run_peer_probes(name, peer_cfg, timeouts, on_progress=on_progress))
-        _emit(on_progress, name, "peer", "done", "peer завершён")
+    classifications = []
+    has_peers = bool(cfg.get("peers"))
+    has_dest = bool(cfg.get("destinations"))
+
+    if has_dest:
+        d_results, d_class = probe_all_destinations(cfg, on_progress=on_progress)
+        results.extend(d_results)
+        classifications.extend(d_class)
+
+    if has_peers:
+        peer_results: list[ProbeResult] = []
+        for name, peer_cfg in peer_items(cfg):
+            _emit(on_progress, name, "peer", "start", "начало диагностики peer")
+            chunk = run_peer_probes(name, peer_cfg, timeouts, on_progress=on_progress)
+            peer_results.extend(chunk)
+            results.extend(chunk)
+            _emit(on_progress, name, "peer", "done", "peer завершён")
+        classifications.extend(classify_all(peer_results))
+
     matrix = build_matrix(results)
-    classifications = classify_all(results)
     _emit(on_progress, "*", "classify", "done", "классификация готова")
+
+    if has_dest and has_peers:
+        mode = "mixed"
+    elif has_dest:
+        mode = "destinations"
+    else:
+        mode = "peers"
+
     return DiagnosisReport(
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         config_path=config_path,
         results=results,
         matrix=matrix,
         classifications=classifications,
+        mode=mode,
     )

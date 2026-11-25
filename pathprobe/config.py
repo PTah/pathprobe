@@ -15,8 +15,9 @@ def load_config(path: str | Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("Корень конфига должен быть mapping")
     peers = data.get("peers") or {}
-    if not peers:
-        raise ValueError("В конфиге нет peers")
+    destinations = data.get("destinations") or []
+    if not peers and not destinations:
+        raise ValueError("В конфиге нет peers и destinations — укажите хотя бы одно")
     data.setdefault("timeouts", {})
     for key, default in (
         ("dns_sec", 3.0),
@@ -24,8 +25,13 @@ def load_config(path: str | Path) -> dict[str, Any]:
         ("tls_sec", 8.0),
         ("udp_sec", 3.0),
         ("mtu_sec", 3.0),
+        ("http_sec", 10.0),
     ):
         data["timeouts"].setdefault(key, default)
+    data.setdefault("control_dns", {})
+    data["control_dns"].setdefault("resolvers", ["1.1.1.1", "8.8.8.8"])
+    data.setdefault("local_dns", {})
+    data["local_dns"].setdefault("resolvers", [])
     return data
 
 
