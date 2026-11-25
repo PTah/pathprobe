@@ -1,0 +1,70 @@
+# Пример конфигурации pathprobe (фаза 1 — только диагностика).
+# Скопируйте в config.yaml и подставьте свои адреса. Чужие хосты не использовать.
+
+meta:
+  report_language: ru
+  # Откуда обычно запускают: домашний Ubuntu-роутер
+  run_role: home-ubuntu
+
+# Цели — только своя инфраструктура
+peers:
+  work_mikrotik:
+    description: "Рабочий MikroTik RouterOS 6.49.19 (публичный WAN)"
+    host: "203.0.113.10"          # замените на WAN MikroTik
+    # Ожидаемые ответы DNS (если на MikroTik/за ним свой DNS/статическая запись)
+    dns:
+      resolvers:
+        - "203.0.113.10"          # DNS на дальнем конце (свой)
+      queries:
+        - name: "probe.work.example"
+          expected_a: ["10.10.10.1"]
+        - name: "blocked-marker.work.example"
+          # если резолвер отдаёт не expected — классифицируем как подмену
+          expected_a: ["10.10.10.2"]
+    tcp_ports:
+      - 22
+      - 443
+      - 8443
+      - 1194
+    udp_ports:
+      - 500      # IKE
+      - 4500     # NAT-T
+      - 51820    # WireGuard
+      - 1194     # OpenVPN UDP
+    tls:
+      - host: "203.0.113.10"
+        port: 443
+        sni: "vpn.work.example"   # SNI вашего сервиса на дальнем конце
+        # expect_cert_cn: "vpn.work.example"
+    mtu:
+      # ICMP/TCP MSS probe к своему хосту
+      target: "203.0.113.10"
+      min_size: 500
+      max_size: 1500
+      df: true
+
+  # Опционально: отдельный EU VPS как контрольный peer
+  # eu_vps:
+  #   description: "EU VPS (self-hosted)"
+  #   host: "198.51.100.20"
+  #   ...
+
+timeouts:
+  dns_sec: 3.0
+  tcp_sec: 5.0
+  tls_sec: 8.0
+  udp_sec: 3.0
+  mtu_sec: 3.0
+
+# Порты, типичные для будущих профилей туннелей (фаза 2) — только для матрицы
+transport_hints:
+  ikev2_ipsec:
+    udp: [500, 4500]
+  gre_ipsec:
+    # GRE (proto 47) + ESP — в фазе 1 UDP/TCP-прокси через echo
+    udp: [500, 4500]
+  wireguard:
+    udp: [51820]
+  openvpn_tcp443:
+    tcp: [443]
+    tls_sni_required: true

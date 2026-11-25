@@ -1,0 +1,35 @@
+# Реестр профилей туннелей (фаза 2). Pathprobe фаза 1 только читает имена для рекомендаций.
+
+version: 1
+profiles:
+  ikev2_ipsec:
+    title_ru: "IKEv2 / IPsec"
+    home: "strongswan"
+    work: "routeros-ipsec-6.49"
+    ports:
+      udp: [500, 4500]
+    status: planned
+
+  gre_ipsec:
+    title_ru: "GRE + IPsec"
+    home: "gre+xfrm-or-strongswan"
+    work: "routeros-gre-ipsec-6.49"
+    notes_ru: "Учитывать MTU/overhead; clamp-mss"
+    status: planned
+
+  wireguard:
+    title_ru: "WireGuard"
+    home: "wg-quick"
+    work: "routeros-wireguard-or-host-behind-nat"
+    ports:
+      udp: [51820]
+    status: planned
+
+  openvpn_tcp443:
+    title_ru: "OpenVPN TCP/443"
+    home: "openvpn-client"
+    work: "openvpn-server-or-host"
+    ports:
+      tcp: [443]
+    notes_ru: "При DPI по SNI/UDP — резервный профиль"
+    status: planned

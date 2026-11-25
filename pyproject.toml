@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathprobe"
+version = "0.1.0"
+description = "Диагностика и классификация блокировок на пути home Ubuntu ↔ work MikroTik"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0.1",
+  "dnspython>=2.6.1",
+  "click>=8.1.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+pathprobe = "pathprobe.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pathprobe*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
