@@ -114,5 +114,13 @@ def classify_cmd(config_path: Path) -> None:
         click.echo("")
 
 
+@main.command("gui")
+def gui_cmd() -> None:
+    """Открыть Windows GUI (нужен extras: pip install 'pathprobe[gui]')."""
+    from pathprobe.gui.app import main as gui_main
+
+    raise SystemExit(gui_main())
+
+
 if __name__ == "__main__":
     sys.exit(main())

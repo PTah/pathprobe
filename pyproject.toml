@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathprobe"
-version = "0.1.0"
+version = "0.2.0"
 description = "Диагностика и классификация блокировок на пути home Ubuntu ↔ work MikroTik"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,10 +15,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+gui = ["customtkinter>=5.2.0"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]
 pathprobe = "pathprobe.cli:main"
+pathprobe-gui = "pathprobe.gui.app:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
