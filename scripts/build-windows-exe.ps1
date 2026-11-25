@@ -50,7 +50,12 @@ $exe = Join-Path $distGui "pathprobe-gui.exe"
 if (-not (Test-Path $exe)) { throw "exe not found: $exe" }
 
 Copy-Item (Join-Path $Root "config.example.yaml") (Join-Path $distGui "config.example.yaml") -Force
-Copy-Item (Join-Path $Root "config.example.yaml") (Join-Path $distGui "config.yaml") -Force
+$cfgOut = Join-Path $distGui "config.yaml"
+if (-not (Test-Path $cfgOut)) {
+    Copy-Item (Join-Path $Root "config.example.yaml") $cfgOut -Force
+} else {
+    Write-Host "[*] keep existing config.yaml in dist/gui" -ForegroundColor Yellow
+}
 
 $hash = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLowerInvariant()
 $hashFile = Join-Path $distGui "pathprobe-gui.exe.sha256"
